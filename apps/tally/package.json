@@ -1,0 +1,40 @@
+{
+  "name": "@tounkara/tally",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --hostname 0.0.0.0 --port 3847",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@tounkara/invoice-drafting": "file:../../skills/invoice_drafting",
+    "@tounkara/payment-followups": "file:../../skills/payment_followups",
+    "@tounkara/payment-links": "file:../../skills/payment_links",
+    "@tounkara/reconciliation": "file:../../skills/reconciliation",
+    "@ai-sdk/react": "^4.0.163",
+    "@paypal/agent-toolkit": "^1.11.0",
+    "@radix-ui/react-slot": "^1.5.0",
+    "@supabase/supabase-js": "^2.118.0",
+    "ai": "^7.0.159",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.65.0",
+    "next": "16.4.3",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "tailwind-merge": "^3.7.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@tailwindcss/turbopack": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.4.3",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

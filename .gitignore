@@ -1,0 +1,14 @@
+node_modules
+uploads
+agent-tools
+.next
+dist
+coverage
+.env
+.env.local
+.env.*.local
+apps/tally/.data
+.DS_Store
+*.log
+.vercel
+tsconfig.tsbuildinfo

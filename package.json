@@ -1,0 +1,22 @@
+{
+  "name": "tally-agent",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Tally: a human-in-the-loop invoicing and payment agent for small service businesses.",
+  "workspaces": [
+    "apps/*",
+    "skills/*"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "dev": "npm run dev --workspace @tounkara/tally",
+    "build": "npm run build --workspace @tounkara/tally",
+    "lint": "npm run lint --workspace @tounkara/tally",
+    "demo:loop": "vitest run skills/payment_links/src/loop.test.ts skills/reconciliation/src/index.test.ts"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}
