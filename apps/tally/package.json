@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@tounkara/front-office": "file:../../skills/front_office",
     "@tounkara/invoice-drafting": "file:../../skills/invoice_drafting",
     "@tounkara/payment-followups": "file:../../skills/payment_followups",
     "@tounkara/payment-links": "file:../../skills/payment_links",

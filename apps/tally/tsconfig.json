@@ -20,6 +20,7 @@
     ],
     "paths": {
       "@/*": ["./src/*"],
+      "@tounkara/front-office": ["../../skills/front_office/src/index.ts"],
       "@tounkara/invoice-drafting": ["../../skills/invoice_drafting/src/index.ts"],
       "@tounkara/payment-links": ["../../skills/payment_links/src/index.ts"],
       "@tounkara/payment-followups": ["../../skills/payment_followups/src/index.ts"],

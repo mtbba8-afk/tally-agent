@@ -1,0 +1,8 @@
+{
+  "AMOUNT_NOT_POSITIVE": "Amount must be greater than zero.",
+  "PAYEE_NOT_APPROVED": "Payee is not an approved supplier.",
+  "CHAIN_MISMATCH": "Destination chain does not match the approved supplier.",
+  "ADDRESS_MISMATCH": "Destination address does not match the approved supplier.",
+  "OVER_DAILY_CAP": "Amount exceeds the daily cap.",
+  "INSUFFICIENT_OPS": "Amount exceeds the agent operations balance. The tax reserve cannot be spent."
+}

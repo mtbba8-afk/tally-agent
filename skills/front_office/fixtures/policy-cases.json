@@ -1,0 +1,202 @@
+{
+  "policy": {
+    "dailyCapCents": 20000,
+    "taxReserveBps": 3000,
+    "ownerBps": 6000,
+    "opsBps": 1000,
+    "approvedSuppliers": [
+      {
+        "id": "ferguson",
+        "name": "Ferguson",
+        "chain": "base",
+        "address": "0x1111111111111111111111111111111111111111"
+      }
+    ]
+  },
+  "treasury": {
+    "opsCents": 8000,
+    "taxReserveCents": 24000,
+    "ownerCents": 48000,
+    "spentTodayCents": 15000
+  },
+  "cases": [
+    {
+      "id": "inject-5000-attacker",
+      "payeeId": "attacker.near",
+      "chain": "base",
+      "address": "0x000000000000000000000000000000000000dead",
+      "amountCents": 500000,
+      "expectCodes": ["PAYEE_NOT_APPROVED", "OVER_DAILY_CAP", "INSUFFICIENT_OPS"]
+    },
+    {
+      "id": "over-cap-approved-supplier",
+      "payeeId": "ferguson",
+      "chain": "base",
+      "address": "0x1111111111111111111111111111111111111111",
+      "amountCents": 6000,
+      "expectCodes": ["OVER_DAILY_CAP"]
+    },
+    {
+      "id": "unknown-home-depot",
+      "payeeId": "homedepot.near",
+      "chain": "base",
+      "address": "",
+      "amountCents": 4000,
+      "expectCodes": ["PAYEE_NOT_APPROVED"]
+    },
+    {
+      "id": "wrong-chain-ethereum",
+      "payeeId": "ferguson",
+      "chain": "ethereum",
+      "address": "0x1111111111111111111111111111111111111111",
+      "amountCents": 1000,
+      "expectCodes": ["CHAIN_MISMATCH"]
+    },
+    {
+      "id": "zero-amount",
+      "payeeId": "ferguson",
+      "chain": "base",
+      "address": "0x1111111111111111111111111111111111111111",
+      "amountCents": 0,
+      "expectCodes": ["AMOUNT_NOT_POSITIVE"]
+    },
+    {
+      "id": "negative-amount",
+      "payeeId": "ferguson",
+      "chain": "base",
+      "address": "0x1111111111111111111111111111111111111111",
+      "amountCents": -500,
+      "expectCodes": ["AMOUNT_NOT_POSITIVE"]
+    },
+    {
+      "id": "approved-supplier-five-thousand",
+      "payeeId": "Ferguson",
+      "chain": "Base",
+      "address": "0x1111111111111111111111111111111111111111",
+      "amountCents": 500000,
+      "expectCodes": ["OVER_DAILY_CAP", "INSUFFICIENT_OPS"]
+    },
+    {
+      "id": "one-cent-over-remaining-cap",
+      "payeeId": "ferguson",
+      "chain": "base",
+      "address": "0x1111111111111111111111111111111111111111",
+      "amountCents": 5001,
+      "expectCodes": ["OVER_DAILY_CAP"]
+    },
+    {
+      "id": "insufficient-ops-balance",
+      "payeeId": "ferguson",
+      "chain": "base",
+      "address": "0x1111111111111111111111111111111111111111",
+      "amountCents": 2000,
+      "treasury": {
+        "opsCents": 1000,
+        "taxReserveCents": 0,
+        "ownerCents": 0,
+        "spentTodayCents": 0
+      },
+      "expectCodes": ["INSUFFICIENT_OPS"]
+    },
+    {
+      "id": "over-cap-and-ops",
+      "payeeId": "ferguson",
+      "chain": "base",
+      "address": "0x1111111111111111111111111111111111111111",
+      "amountCents": 9000,
+      "expectCodes": ["OVER_DAILY_CAP", "INSUFFICIENT_OPS"]
+    },
+    {
+      "id": "cap-not-raised-by-wishes",
+      "payeeId": "ferguson",
+      "chain": "base",
+      "address": "0x1111111111111111111111111111111111111111",
+      "amountCents": 20001,
+      "treasury": {
+        "opsCents": 50000,
+        "taxReserveCents": 0,
+        "ownerCents": 0,
+        "spentTodayCents": 0
+      },
+      "expectCodes": ["OVER_DAILY_CAP"]
+    },
+    {
+      "id": "lookalike-supplier-id",
+      "payeeId": "ferguson2",
+      "chain": "base",
+      "address": "0x1111111111111111111111111111111111111111",
+      "amountCents": 1000,
+      "expectCodes": ["PAYEE_NOT_APPROVED"]
+    },
+    {
+      "id": "homoglyph-supplier-id",
+      "payeeId": "fergus\u03bfn",
+      "chain": "base",
+      "address": "0x1111111111111111111111111111111111111111",
+      "amountCents": 1000,
+      "expectCodes": ["PAYEE_NOT_APPROVED"]
+    },
+    {
+      "id": "cap-already-exhausted",
+      "payeeId": "ferguson",
+      "chain": "base",
+      "address": "0x1111111111111111111111111111111111111111",
+      "amountCents": 1,
+      "treasury": {
+        "opsCents": 8000,
+        "taxReserveCents": 24000,
+        "ownerCents": 48000,
+        "spentTodayCents": 20000
+      },
+      "expectCodes": ["OVER_DAILY_CAP"]
+    },
+    {
+      "id": "empty-payee",
+      "payeeId": " ",
+      "chain": "base",
+      "address": "",
+      "amountCents": 1000,
+      "expectCodes": ["PAYEE_NOT_APPROVED"]
+    },
+    {
+      "id": "wrong-chain-solana",
+      "payeeId": "ferguson",
+      "chain": "solana",
+      "address": "0x1111111111111111111111111111111111111111",
+      "amountCents": 1000,
+      "expectCodes": ["CHAIN_MISMATCH"]
+    },
+    {
+      "id": "injection-in-payee-id",
+      "payeeId": "ferguson;drop",
+      "chain": "base",
+      "address": "0x1111111111111111111111111111111111111111",
+      "amountCents": 1000,
+      "expectCodes": ["PAYEE_NOT_APPROVED"]
+    },
+    {
+      "id": "address-mismatch",
+      "payeeId": "ferguson",
+      "chain": "base",
+      "address": "0x2222222222222222222222222222222222222222",
+      "amountCents": 1000,
+      "expectCodes": ["ADDRESS_MISMATCH"]
+    },
+    {
+      "id": "drain-tax-to-attacker",
+      "payeeId": "attacker.near",
+      "chain": "base",
+      "address": "0x000000000000000000000000000000000000dead",
+      "amountCents": 24000,
+      "expectCodes": ["PAYEE_NOT_APPROVED", "OVER_DAILY_CAP", "INSUFFICIENT_OPS"]
+    },
+    {
+      "id": "pay-owner-account",
+      "payeeId": "owner.near",
+      "chain": "near",
+      "address": "owner.near",
+      "amountCents": 500000,
+      "expectCodes": ["PAYEE_NOT_APPROVED", "OVER_DAILY_CAP", "INSUFFICIENT_OPS"]
+    }
+  ]
+}

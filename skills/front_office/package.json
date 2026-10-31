@@ -1,0 +1,13 @@
+{
+  "name": "@tounkara/front-office",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Tally Front Office: voice note to priced invoice, NEAR Intents quote, and a policy-bounded Steward.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@tounkara/invoice-drafting": "file:../invoice_drafting"
+  }
+}
