@@ -66,6 +66,13 @@ export function updateLedger(mutate: (data: LedgerData) => void): Promise<Ledger
 }
 
 async function ensureLoaded(): Promise<LedgerData> {
+  // Supabase is shared by every server instance. A memory cache on one instance
+  // would miss a booking saved by another, and a later write could wipe it.
+  if (supabaseConfigured()) {
+    const loaded = normalizeLedger(await load());
+    if (ensureDemoDispute(loaded)) await persist(loaded);
+    return loaded;
+  }
   if (!globalStore.__tallyMemory) {
     const loaded = normalizeLedger(await load());
     const added = ensureDemoDispute(loaded);

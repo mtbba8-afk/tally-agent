@@ -13,3 +13,4 @@ PayPal AI Hackathon. Work below is new during the hackathon window. The invoicin
 - Dispute response packets are drafted from the job note, the price book lines, and the call. A person approves before submit. Demo dispute ids stay on the desk. A real sandbox dispute id is sent with the PayPal evidence API.
 - `POST /api/mcp` exposes `book_service_visit`, including an optional diagnostic deposit order.
 - `render.yaml` is the Render web service blueprint. The Next app binds `0.0.0.0:$PORT`.
+- On Supabase, each request reads the ledger again so one server instance cannot serve a stale copy or overwrite a call saved by another.

@@ -8,7 +8,11 @@ export default async function JobsPage() {
   const jobs = data.jobs
     .filter((job) => job.shopId === shopId)
     .slice()
-    .sort((a, b) => (b.completedAt ?? "").localeCompare(a.completedAt ?? ""));
+    .sort((a, b) => {
+      if (a.status === "open" && b.status !== "open") return -1;
+      if (b.status === "open" && a.status !== "open") return 1;
+      return (b.completedAt ?? "").localeCompare(a.completedAt ?? "");
+    });
 
   return (
     <div>
