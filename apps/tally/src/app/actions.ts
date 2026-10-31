@@ -18,6 +18,8 @@ import {
 import { updateLedger, viewLedger } from "@/lib/ledger";
 import { balanceCents, currentShopId } from "@/lib/runtime";
 import type { Invoice } from "@/lib/types";
+import { approveToken, hearCustomer, noteFinishedJob, openCall, submitDisputePacket } from "@/lib/voice-flow";
+import type { BookingSlots } from "@tounkara/voice-intake";
 
 export type ActionState = { error: string } | null;
 
@@ -268,5 +270,116 @@ export async function checkPayPal(formData: FormData): Promise<void> {
   await refreshPayPalStatus(invoiceId);
   revalidatePath(`/invoices/${invoiceId}`);
   revalidatePath(`/pay/${invoiceId}`);
+}
+
+export async function startCallAction(source: "live" | "transcript"): Promise<{ callId: string; say: string; slots: BookingSlots } | { error: string }> {
+  try {
+    const data = await viewLedger();
+    const shopId = await currentShopId(data);
+    return await openCall(shopId, source);
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Could not open the call." };
+  }
+}
+
+export async function hearCustomerAction(
+  callId: string,
+  text: string,
+): Promise<{ say: string; complete: boolean; slots: BookingSlots; jobId: string | null } | { error: string }> {
+  try {
+    const result = await hearCustomer(callId, text);
+    return { say: result.say, complete: result.complete, slots: result.slots, jobId: result.jobId };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Could not hear that line." };
+  }
+}
+
+export async function finishJobAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const callId = String(formData.get("callId") ?? "");
+  const notes = String(formData.get("notes") ?? "");
+  try {
+    const result = await noteFinishedJob(callId, notes, await origin());
+    revalidatePath("/calls");
+    revalidatePath("/phone");
+    redirect(`/invoices/${result.invoiceId}`);
+  } catch (error) {
+    rethrowRedirect(error);
+    if (error instanceof EmptyJobNoteError) return { error: error.message };
+    return { error: error instanceof Error ? error.message : "Could not draft that invoice." };
+  }
+}
+
+export async function approveFromPhone(formData: FormData): Promise<void> {
+  const token = String(formData.get("token") ?? "");
+  const result = await approveToken(token, await origin());
+  revalidatePath("/phone");
+  revalidatePath("/invoices");
+  if (result.ok) redirect(`/invoices/${result.invoiceId}`);
+  if (result.invoiceId) redirect(`/invoices/${result.invoiceId}?approval=${encodeURIComponent(result.error)}`);
+  redirect(`/phone?error=${encodeURIComponent(result.error)}`);
+}
+
+export async function simulatePaidWebhook(formData: FormData): Promise<void> {
+  const invoiceId = String(formData.get("invoiceId") ?? "");
+  const data = await viewLedger();
+  const invoice = data.invoices.find((item) => item.id === invoiceId);
+  if (!invoice) redirect("/invoices");
+  const due = balanceCents(invoice);
+  await applyPayPalEvent({
+    id: `WH-DEMO-PAID-${invoice.id}-${Date.now()}`,
+    event_type: "INVOICING.INVOICE.PAID",
+    resource: {
+      id: invoice.paypalInvoiceId ?? invoice.id,
+      status: "PAID",
+      invoice_number: invoice.number,
+      amount: { currency_code: "USD", value: moneyValue(due > 0 ? due : invoice.subtotalCents) },
+    },
+  });
+  revalidatePath(`/invoices/${invoiceId}`);
+  revalidatePath("/cash");
+  redirect(`/invoices/${invoiceId}`);
+}
+
+export async function simulateDisputeWebhook(formData: FormData): Promise<void> {
+  const invoiceId = String(formData.get("invoiceId") ?? "");
+  const data = await viewLedger();
+  const invoice = data.invoices.find((item) => item.id === invoiceId);
+  if (!invoice) redirect("/invoices");
+  await applyPayPalEvent({
+    id: `WH-DEMO-DISPUTE-${invoice.id}-${Date.now()}`,
+    event_type: "CUSTOMER.DISPUTE.CREATED",
+    resource: {
+      dispute_id: `PP-D-DEMO-${invoice.number}`,
+      reason: "Item not as described",
+      invoice_number: invoice.number,
+    },
+  });
+  const fresh = await viewLedger();
+  const packet = [...fresh.disputes].reverse().find((item) => item.invoiceId === invoice.id);
+  revalidatePath("/disputes");
+  redirect(packet ? `/disputes/${packet.id}` : `/invoices/${invoiceId}`);
+}
+
+export async function approveDispute(formData: FormData): Promise<void> {
+  const packetId = String(formData.get("packetId") ?? "");
+  await updateLedger((ledger) => {
+    const packet = ledger.disputes.find((item) => item.id === packetId);
+    if (!packet || packet.status === "approved") return;
+    packet.status = "approved";
+    packet.approvedAt = new Date().toISOString();
+    ledger.logs.push({
+      id: freshId("log"),
+      shopId: packet.shopId,
+      at: new Date().toISOString(),
+      actor: "owner",
+      action: "dispute_approved",
+      detail: "Owner approved the dispute response. It has not been sent until the next step.",
+      invoiceId: packet.invoiceId,
+      jobId: null,
+    });
+  });
+  await submitDisputePacket(packetId);
+  revalidatePath(`/disputes/${packetId}`);
+  redirect(`/disputes/${packetId}`);
 }
 

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { approveAndSend, checkPayPal, setDemoClock, voidInvoice } from "@/app/actions";
+import { approveAndSend, checkPayPal, setDemoClock, simulateDisputeWebhook, simulatePaidWebhook, voidInvoice } from "@/app/actions";
 import { StatusPill } from "@/components/status-pill";
 import { SubmitButton } from "@/components/submit-button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,8 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   const customer = data.customers.find((item) => item.id === invoice.customerId);
   const editable = invoice.status === "awaiting_approval" || invoice.status === "draft";
   const reminders = data.logs.filter((entry) => entry.invoiceId === invoice.id && entry.action === "reminder_sent");
+  const approval = data.messages.find((message) => message.invoiceId === invoice.id && message.token);
+  const packet = data.disputes.find((item) => item.invoiceId === invoice.id);
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -50,7 +52,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
                   <p className="text-xs text-muted">
                     {line.code.startsWith("review.unmatched")
                       ? "Not in the price book. Enter the dollar amount."
-                      : `${formatUsd(line.unitPriceCents)} each`}
+                      : `Price book · ${formatUsd(line.unitPriceCents)} each`}
                   </p>
                 </div>
                 <label className="text-xs text-muted">
@@ -81,6 +83,9 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
               <li key={`${line.code}-${line.quantity}`} className="flex justify-between gap-3">
                 <span>
                   {line.name} × {line.quantity}
+                  <span className="mt-1 block text-xs text-muted">
+                    {line.code.startsWith("review.unmatched") ? "Not in the price book" : "Price book"}
+                  </span>
                 </span>
                 <span>{formatUsd(line.amountCents)}</span>
               </li>
@@ -103,6 +108,27 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
             Void this draft
           </SubmitButton>
         </form>
+      ) : null}
+
+      {approval ? (
+        <p className="text-sm">
+          Approval text is on the{" "}
+          <Link href="/phone" className="text-accent">
+            owner phone
+          </Link>
+          . The same link is{" "}
+          <Link href={`/approve/${approval.token}`} className="text-accent">
+            here
+          </Link>
+          .
+        </p>
+      ) : null}
+      {packet ? (
+        <p className="text-sm">
+          <Link href={`/disputes/${packet.id}`} className="text-accent">
+            Open the dispute response
+          </Link>
+        </p>
       ) : null}
 
       {invoice.sentAt ? (
@@ -160,6 +186,22 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
             </form>
           ) : null}
           {customer ? <p className="mt-4 text-muted">Payer email on the invoice: {customer.email}</p> : null}
+          {invoice.status !== "paid" && invoice.status !== "void" && invoice.status !== "disputed" ? (
+            <form action={simulatePaidWebhook} className="mt-4">
+              <input type="hidden" name="invoiceId" value={invoice.id} />
+              <SubmitButton variant="outline" pendingLabel="Recording...">
+                Replay a PayPal paid webhook
+              </SubmitButton>
+            </form>
+          ) : null}
+          {invoice.status !== "disputed" && invoice.status !== "void" ? (
+            <form action={simulateDisputeWebhook} className="mt-3">
+              <input type="hidden" name="invoiceId" value={invoice.id} />
+              <SubmitButton variant="ghost" pendingLabel="Drafting...">
+                Simulate a dispute webhook
+              </SubmitButton>
+            </form>
+          ) : null}
         </section>
       ) : null}
     </div>

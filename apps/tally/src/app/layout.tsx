@@ -13,8 +13,8 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
-  title: "Tally",
-  description: "Invoice drafts, PayPal collection, and reminders for small service shops.",
+  title: "Tally Voice",
+  description: "From a shop phone call to a PayPal invoice, with the owner approving every send.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

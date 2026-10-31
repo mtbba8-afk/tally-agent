@@ -33,7 +33,9 @@ export default async function JobsPage() {
                   <div>
                     <p className="font-medium">{customerName(data, job.customerId)}</p>
                     <p className="mt-1 text-sm">{job.notes}</p>
-                    <p className="mt-1 text-xs text-muted">{job.completedAt ? formatWhen(job.completedAt) : "Open"} ET</p>
+                    <p className="mt-1 text-xs text-muted">
+                      {job.status === "open" ? "Booked, waiting on the tech" : job.completedAt ? `${formatWhen(job.completedAt)} ET` : job.status}
+                    </p>
                   </div>
                   {invoice ? (
                     <Link href={`/invoices/${invoice.id}`} className="text-sm text-accent">
