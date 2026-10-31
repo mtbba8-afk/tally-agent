@@ -4,6 +4,7 @@ import { checkPayPal, markBuyerView, payAsBuyer } from "@/app/actions";
 import { SubmitButton } from "@/components/submit-button";
 import { viewLedger } from "@/lib/ledger";
 import { balanceCents, formatWhen } from "@/lib/runtime";
+import { payLaterMessage } from "@tounkara/cash-desk";
 import { formatUsd } from "@tounkara/payment-followups";
 
 export default async function PayPage({ params }: { params: Promise<{ id: string }> }) {
@@ -17,6 +18,7 @@ export default async function PayPage({ params }: { params: Promise<{ id: string
   const fresh = (await viewLedger()).invoices.find((item) => item.id === id) ?? invoice;
   const payable = fresh.status === "sent" || fresh.status === "viewed" || fresh.status === "partial";
   const sandboxLink = invoice.gatewayMode === "sandbox" && invoice.payUrl?.startsWith("http") ? invoice.payUrl : null;
+  const later = payLaterMessage(balanceCents(fresh));
 
   return (
     <main className="mx-auto min-h-full max-w-lg px-4 py-10">
@@ -39,6 +41,7 @@ export default async function PayPage({ params }: { params: Promise<{ id: string
         Status: {fresh.status}
         {fresh.paidAt ? ` · paid ${formatWhen(fresh.paidAt)} ET` : ""}
       </p>
+      {later && payable ? <p className="mt-4 rounded-2xl border border-line bg-card p-4 text-sm">{later}</p> : null}
       {fresh.status === "paid" ? <p className="mt-4 text-sm text-paid">This invoice is paid. Thank you.</p> : null}
       {fresh.status === "disputed" ? <p className="mt-4 text-sm text-danger">This invoice is disputed. Reminders are paused.</p> : null}
       {payable && sandboxLink ? (

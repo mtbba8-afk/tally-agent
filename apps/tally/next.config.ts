@@ -15,6 +15,8 @@ const nextConfig: NextConfig = {
     "@tounkara/payment-links",
     "@tounkara/payment-followups",
     "@tounkara/reconciliation",
+    "@tounkara/voice-intake",
+    "@tounkara/cash-desk",
   ],
   turbopack: {
     // Skills live outside this app. The Vercel root is apps/tally, so resolution

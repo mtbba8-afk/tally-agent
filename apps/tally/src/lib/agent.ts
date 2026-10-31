@@ -7,6 +7,7 @@ import {
   type InvoiceDraft,
   type Trade,
 } from "@tounkara/invoice-drafting";
+import { buildReceivables, cashForecast, formatUsd as formatForecastUsd } from "@tounkara/cash-desk";
 import { formatUsd, type ReminderStage } from "@tounkara/payment-followups";
 import { updateLedger } from "./ledger";
 import {
@@ -217,6 +218,26 @@ export function answerFromBooks(question: string, data: LedgerData, shopId: stri
   const invoices = data.invoices.filter((invoice) => invoice.shopId === shopId);
   const open = invoices.filter((invoice) => ["sent", "viewed", "partial"].includes(invoice.status));
   const summary = summarizeShop(data, shopId, now);
+  if (/call today|who should i call|forecast|cash coming|expected cash/.test(q)) {
+    const rows = buildReceivables(
+      invoices.map((invoice) => ({
+        invoiceId: invoice.id,
+        number: invoice.number,
+        customer: customerName(data, invoice.customerId),
+        status: invoice.status,
+        sentAt: invoice.sentAt,
+        balanceCents: balanceCents(invoice),
+        remindersSent: invoice.remindersSent,
+      })),
+      now,
+    );
+    const forecast = cashForecast(rows);
+    const calls =
+      forecast.callList.length === 0
+        ? "Nobody needs a call today."
+        : `Call today: ${forecast.callList.map((row) => `${row.customer} (${formatForecastUsd(row.balanceCents)} on ${row.number})`).join("; ")}.`;
+    return `Expected in 7 days: ${formatForecastUsd(forecast.next7Cents)}. In 14 days: ${formatForecastUsd(forecast.next14Cents)}. ${calls}`;
+  }
   if (/who|owe|outstanding|unpaid|open/.test(q)) {
     if (open.length === 0) return "Nobody has an open invoice right now.";
     const lines = open.map(
@@ -238,7 +259,7 @@ export function answerFromBooks(question: string, data: LedgerData, shopId: stri
       })
       .join(" ");
   }
-  return `Outstanding is ${formatUsd(summary.outstandingCents)} across ${summary.openCount} open invoice${summary.openCount === 1 ? "" : "s"}. ${formatUsd(summary.paidThisMonthCents)} came in this month. Ask who owes you, what was paid, or which invoices are past day 7.`;
+  return `Outstanding is ${formatUsd(summary.outstandingCents)} across ${summary.openCount} open invoice${summary.openCount === 1 ? "" : "s"}. ${formatUsd(summary.paidThisMonthCents)} came in this month. Ask who owes you, what was paid, who to call today, or which invoices are past day 7.`;
 }
 
 function ageDays(sentAt: string, now: Date): number {
@@ -262,6 +283,7 @@ export async function askBooks(messages: ModelMessage[], shopId: string) {
     system: [
       "You are the books assistant for one trades shop.",
       "Answer from list_open_invoices, receivables_summary, and recent_activity.",
+      "When asked who to call today, prefer the oldest partials and invoices past day 7.",
       "Amounts are cents in the tools. Speak in dollars.",
       "If PayPal tools are available, you may list sandbox invoices or disputes. Never create or send money from a question.",
       "Do not invent customers or amounts. Do not use an em dash.",

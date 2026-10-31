@@ -4,11 +4,11 @@ import { formatWhen, runtimeMode } from "@/lib/runtime";
 import type { Shop } from "@/lib/types";
 
 const links = [
+  { href: "/calls", label: "Call" },
   { href: "/", label: "Desk" },
-  { href: "/jobs", label: "Jobs" },
+  { href: "/cash", label: "Cash" },
   { href: "/invoices", label: "Invoices" },
-  { href: "/activity", label: "Activity" },
-  { href: "/ask", label: "Ask" },
+  { href: "/phone", label: "Phone" },
 ];
 
 export function Shell({
@@ -28,7 +28,7 @@ export function Shell({
           <Link href="/" className="font-display text-3xl tracking-tight">
             Tally
           </Link>
-          <p className="mt-1 text-sm text-muted">Get paid when the job is done.</p>
+          <p className="mt-1 text-sm text-muted">From the call to paid.</p>
           <nav className="mt-8 flex flex-col gap-1">
             {links.map((link) => (
               <Link key={link.href} href={link.href} className="rounded-full px-3 py-2 text-sm hover:bg-[#efe7d8]">

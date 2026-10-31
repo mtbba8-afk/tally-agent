@@ -2,8 +2,10 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { connection } from "next/server";
-import { buildSeed } from "./seed";
-import type { LedgerData } from "./types";
+import { buildSeed, ensureDemoDispute } from "./seed";
+import type { DisputePacket, LedgerData, OwnerMessage, ServiceCall } from "./types";
+
+export const VOICE_EVENT_ID = "tally_voice_state";
 
 const globalStore = globalThis as unknown as {
   __tallyMemory?: LedgerData | null;
@@ -64,7 +66,19 @@ export function updateLedger(mutate: (data: LedgerData) => void): Promise<Ledger
 }
 
 async function ensureLoaded(): Promise<LedgerData> {
-  if (!globalStore.__tallyMemory) globalStore.__tallyMemory = await load();
+  // Supabase is shared by every server instance. A memory cache on one instance
+  // would miss a booking saved by another, and a later write could wipe it.
+  if (supabaseConfigured()) {
+    const loaded = normalizeLedger(await load());
+    if (ensureDemoDispute(loaded)) await persist(loaded);
+    return loaded;
+  }
+  if (!globalStore.__tallyMemory) {
+    const loaded = normalizeLedger(await load());
+    const added = ensureDemoDispute(loaded);
+    globalStore.__tallyMemory = loaded;
+    if (added) await persist(loaded);
+  }
   return globalStore.__tallyMemory;
 }
 
@@ -84,7 +98,7 @@ async function persist(data: LedgerData): Promise<void> {
 async function loadFile(): Promise<LedgerData> {
   try {
     const raw = await readFile(/* turbopackIgnore: true */ dataFilePath(), "utf8");
-    return JSON.parse(raw) as LedgerData;
+    return normalizeLedger(JSON.parse(raw) as LedgerData);
   } catch (error) {
     const code = (error as NodeJS.ErrnoException).code;
     if (code !== "ENOENT") throw error;
@@ -124,14 +138,19 @@ async function loadSupabase(): Promise<LedgerData> {
     must(client.from("agent_log").select("*")),
     must(client.from("paypal_events").select("*")),
   ]);
-  return {
+  const voiceRow = events.find((row) => String(row.id) === VOICE_EVENT_ID);
+  const voice = readVoicePayload(voiceRow?.payload);
+  return normalizeLedger({
     shops: shops.map(shopFromRow),
     customers: customers.map(customerFromRow),
     jobs: jobs.map(jobFromRow),
     invoices: invoices.map(invoiceFromRow),
     logs: logs.map(logFromRow),
-    events: events.map(eventFromRow),
-  };
+    events: events.filter((row) => String(row.id) !== VOICE_EVENT_ID).map(eventFromRow),
+    calls: voice.calls,
+    messages: voice.messages,
+    disputes: voice.disputes,
+  });
 }
 
 async function persistSupabase(data: LedgerData): Promise<void> {
@@ -141,7 +160,38 @@ async function persistSupabase(data: LedgerData): Promise<void> {
   await must(client.from("jobs").upsert(data.jobs.map(jobToRow)));
   await must(client.from("invoices").upsert(data.invoices.map(invoiceToRow)));
   if (data.logs.length) await must(client.from("agent_log").upsert(data.logs.map(logToRow)));
-  if (data.events.length) await must(client.from("paypal_events").upsert(data.events.map(eventToRow)));
+  const events = data.events.filter((event) => event.id !== VOICE_EVENT_ID);
+  events.push({
+    id: VOICE_EVENT_ID,
+    receivedAt: new Date().toISOString(),
+    eventType: "tally.voice_state",
+    payload: {
+      calls: data.calls ?? [],
+      messages: data.messages ?? [],
+      disputes: data.disputes ?? [],
+    },
+  });
+  await must(client.from("paypal_events").upsert(events.map(eventToRow)));
+}
+
+export function normalizeLedger(data: LedgerData): LedgerData {
+  return {
+    ...data,
+    calls: Array.isArray(data.calls) ? data.calls : [],
+    messages: Array.isArray(data.messages) ? data.messages : [],
+    disputes: Array.isArray(data.disputes) ? data.disputes : [],
+    events: Array.isArray(data.events) ? data.events.filter((event) => event.id !== VOICE_EVENT_ID) : [],
+  };
+}
+
+function readVoicePayload(payload: unknown): { calls: ServiceCall[]; messages: OwnerMessage[]; disputes: DisputePacket[] } {
+  if (!payload || typeof payload !== "object") return { calls: [], messages: [], disputes: [] };
+  const record = payload as { calls?: unknown; messages?: unknown; disputes?: unknown };
+  return {
+    calls: Array.isArray(record.calls) ? (record.calls as ServiceCall[]) : [],
+    messages: Array.isArray(record.messages) ? (record.messages as OwnerMessage[]) : [],
+    disputes: Array.isArray(record.disputes) ? (record.disputes as DisputePacket[]) : [],
+  };
 }
 
 async function must<T>(query: PromiseLike<{ data: T[] | null; error: { message: string } | null }>): Promise<T[]> {

@@ -375,6 +375,20 @@ export class SandboxPayPalGateway implements PayPalGateway {
     return json.verification_status === "SUCCESS";
   }
 
+  async provideDisputeEvidence(disputeId: string, note: string): Promise<void> {
+    await this.request(`/v1/customer/disputes/${encodeURIComponent(disputeId)}/provide-evidence`, {
+      method: "POST",
+      body: {
+        evidences: [
+          {
+            evidence_type: "OTHER",
+            notes: note.slice(0, 2000),
+          },
+        ],
+      },
+    });
+  }
+
   async getInvoice(invoiceId: string): Promise<{ id: string; status: string; payUrl: string | null }> {
     const response = await this.request(`/v2/invoicing/invoices/${encodeURIComponent(invoiceId)}`, {
       method: "GET",

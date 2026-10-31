@@ -12,6 +12,7 @@ import {
 } from "@tounkara/payment-links";
 import { composeReminder, selectDueInvoices, type ReminderStage } from "@tounkara/payment-followups";
 import { assertAmountLocked, interpretWebhook, paidInFull, type PayPalWebhookEvent } from "@tounkara/reconciliation";
+import { draftDisputeResponse } from "@tounkara/cash-desk";
 import { appendLog, sendWithPayPalAgent, summarizeShop } from "./agent";
 import { updateLedger, viewLedger } from "./ledger";
 import {
@@ -115,32 +116,50 @@ async function pushToPayPal(
   }
 
   const gateway = createPayPalGateway();
-  const created = await gateway.createInvoice(invoiceBody(invoice, shop, email, recipientName));
-  const sent = await gateway.sendInvoice(created.id);
-  let payUrl = sent.payUrl;
-  let paypalOrderId: string | null = null;
-  if (!payUrl) {
-    const order = await gateway.createOrder({
-      invoiceNumber: invoice.number,
-      currency: "USD",
-      amountCents: invoice.subtotalCents,
-      description: `Invoice ${invoice.number}`,
-      returnUrl: localPay,
-      cancelUrl: localPay,
-    });
-    payUrl = order.approveUrl;
-    paypalOrderId = order.id;
+  try {
+    const created = await gateway.createInvoice(invoiceBody(invoice, shop, email, recipientName));
+    const sent = await gateway.sendInvoice(created.id);
+    let payUrl = sent.payUrl;
+    let paypalOrderId: string | null = null;
+    if (!payUrl) {
+      const order = await gateway.createOrder(orderInput(invoice, localPay));
+      payUrl = order.approveUrl;
+      paypalOrderId = order.id;
+    }
+    const mode = gateway instanceof MockPayPalGateway || gateway.mode === "mock" ? "mock" : "sandbox";
+    return {
+      paypalInvoiceId: created.id,
+      paypalOrderId,
+      payUrl: mode === "mock" ? localPay : payUrl || localPay,
+      mode,
+      detail:
+        mode === "sandbox"
+          ? `Sent ${invoice.number} through the PayPal sandbox.`
+          : `Sent ${invoice.number} through the mock PayPal gateway. Add sandbox keys to create a real invoice.`,
+    };
+  } catch (error) {
+    if (!(error instanceof PayPalApiError) || (error.status !== 403 && error.status !== 401)) throw error;
+    const order = await gateway.createOrder(orderInput(invoice, localPay));
+    if (!order.id) throw error;
+    const mode = gateway instanceof MockPayPalGateway || gateway.mode === "mock" ? "mock" : "sandbox";
+    return {
+      paypalInvoiceId: order.id,
+      paypalOrderId: order.id,
+      payUrl: mode === "mock" ? localPay : order.approveUrl || localPay,
+      mode,
+      detail: `PayPal invoicing was not authorized. Sent ${invoice.number} as a PayPal order instead.`,
+    };
   }
-  const mode = gateway instanceof MockPayPalGateway || gateway.mode === "mock" ? "mock" : "sandbox";
+}
+
+function orderInput(invoice: Invoice, localPay: string) {
   return {
-    paypalInvoiceId: created.id,
-    paypalOrderId,
-    payUrl: mode === "mock" ? localPay : payUrl || localPay,
-    mode,
-    detail:
-      mode === "sandbox"
-        ? `Sent ${invoice.number} through the PayPal sandbox.`
-        : `Sent ${invoice.number} through the mock PayPal gateway. Add sandbox keys to create a real invoice.`,
+    invoiceNumber: invoice.number,
+    currency: "USD" as const,
+    amountCents: invoice.subtotalCents,
+    description: `Invoice ${invoice.number}`,
+    returnUrl: localPay,
+    cancelUrl: localPay,
   };
 }
 
@@ -230,17 +249,56 @@ export async function applyPayPalEvent(event: PayPalWebhookEvent): Promise<strin
       });
     } else if (action.action === "flag_dispute") {
       invoice.status = "disputed";
+      const reason = disputeReason(event.resource);
+      const paypalDisputeId =
+        stringField(event.resource, "dispute_id") || stringField(event.resource, "disputeId");
+      if (!data.disputes.some((item) => item.invoiceId === invoice.id)) {
+        const call = data.calls.find((item) => item.invoiceId === invoice.id || item.jobId === invoice.jobId);
+        const job = data.jobs.find((item) => item.id === invoice.jobId);
+        const drafted = draftDisputeResponse({
+          invoiceNumber: invoice.number,
+          customerName: customerName(data, invoice.customerId),
+          jobNote: job?.notes || invoice.note,
+          lines: invoice.lines.map((line) => ({ name: line.name, quantity: line.quantity, amountCents: line.amountCents })),
+          callSummary: call ? call.turns.map((turn) => `${turn.speaker}: ${turn.text}`).join(" ") : null,
+          reason,
+        });
+        data.disputes.push({
+          id: freshId("dsp"),
+          shopId,
+          invoiceId: invoice.id,
+          paypalDisputeId,
+          reason,
+          status: "awaiting_approval",
+          narrative: drafted.narrative,
+          evidence: drafted.evidence,
+          createdAt: new Date().toISOString(),
+          approvedAt: null,
+          submitNote: null,
+        });
+      }
       void appendLog(data, {
         shopId,
         actor: "paypal",
         action: "dispute_flagged",
-        detail: `${invoice.number} is disputed. Reminders are paused.`,
+        detail: `${invoice.number} is disputed (${reason}). A response packet is waiting for the owner. Reminders are paused.`,
         invoiceId: invoice.id,
         jobId: invoice.jobId,
       });
     }
   });
   return action.action;
+}
+
+function disputeReason(resource: Record<string, unknown>): string {
+  const reason = resource.reason;
+  if (typeof reason === "string" && reason.trim()) return reason.trim().slice(0, 180);
+  return "The customer disputed the charge.";
+}
+
+function stringField(record: Record<string, unknown>, key: string): string | null {
+  const value = record[key];
+  return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
 function findInvoice(data: LedgerData, paypalInvoiceId: string | null, invoiceRef: string): Invoice | undefined {

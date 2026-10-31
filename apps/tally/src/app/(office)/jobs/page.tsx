@@ -8,7 +8,11 @@ export default async function JobsPage() {
   const jobs = data.jobs
     .filter((job) => job.shopId === shopId)
     .slice()
-    .sort((a, b) => (b.completedAt ?? "").localeCompare(a.completedAt ?? ""));
+    .sort((a, b) => {
+      if (a.status === "open" && b.status !== "open") return -1;
+      if (b.status === "open" && a.status !== "open") return 1;
+      return (b.completedAt ?? "").localeCompare(a.completedAt ?? "");
+    });
 
   return (
     <div>
@@ -33,7 +37,9 @@ export default async function JobsPage() {
                   <div>
                     <p className="font-medium">{customerName(data, job.customerId)}</p>
                     <p className="mt-1 text-sm">{job.notes}</p>
-                    <p className="mt-1 text-xs text-muted">{job.completedAt ? formatWhen(job.completedAt) : "Open"} ET</p>
+                    <p className="mt-1 text-xs text-muted">
+                      {job.status === "open" ? "Booked, waiting on the tech" : job.completedAt ? `${formatWhen(job.completedAt)} ET` : job.status}
+                    </p>
                   </div>
                   {invoice ? (
                     <Link href={`/invoices/${invoice.id}`} className="text-sm text-accent">

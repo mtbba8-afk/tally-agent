@@ -6,7 +6,7 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-const prompts = ["Who still owes me?", "What was paid this month?", "Which invoices are past day 7?"];
+const prompts = ["Who still owes me?", "Who should I call today?", "What was paid this month?"];
 
 export function AskPanel({ aiEnabled }: { aiEnabled: boolean }) {
   return aiEnabled ? <ModelChat /> : <PriceBookChat />;

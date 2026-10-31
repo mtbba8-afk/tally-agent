@@ -1,4 +1,5 @@
-import type { AgentLogEntry, Customer, Invoice, Job, LedgerData, Shop } from "./types";
+import { draftDisputeResponse } from "@tounkara/cash-desk";
+import type { AgentLogEntry, Customer, DisputePacket, Invoice, Job, LedgerData, ServiceCall, Shop } from "./types";
 
 const DAY = 86_400_000;
 
@@ -105,8 +106,8 @@ export function buildSeed(now = new Date()): LedgerData {
       ],
       confidence: "high",
       customerNote: "Replaced the run capacitor on unit 3B and spent 2 hours on site.",
-      sentAt: isoDaysAgo(now, 4),
-      remindersSent: [],
+      sentAt: isoDaysAgo(now, 11),
+      remindersSent: [3],
     }),
     invoice({
       id: "inv_1002",
@@ -206,18 +207,88 @@ export function buildSeed(now = new Date()): LedgerData {
     }),
   ];
 
+  const maya = byName("Maya Chen");
+  jobs.push(job("job_1008", maya, "Replaced capacitor, 1 hr, rooftop unit", isoDaysAgo(now, 18)));
+  const disputed = invoice({
+    id: "inv_1008",
+    number: "INV-1008",
+    job: jobs[jobs.length - 1]!,
+    customer: maya,
+    status: "disputed",
+    lines: [
+      line("hvac.capacitor", "Run capacitor", "Run capacitor. Rooftop unit.", 1, 18500),
+      line("hvac.labor", "HVAC labor", "HVAC labor.", 1, 12500),
+    ],
+    confidence: "high",
+    customerNote: "Replaced the run capacitor and spent an hour on site.",
+    sentAt: isoDaysAgo(now, 18),
+    remindersSent: [3, 7],
+  });
+  invoices.push(disputed);
+
+  const mayaPacket = draftDisputeResponse({
+    invoiceNumber: disputed.number,
+    customerName: maya.name,
+    jobNote: "Replaced capacitor, 1 hr, rooftop unit",
+    lines: disputed.lines.map((item) => ({ name: item.name, quantity: item.quantity, amountCents: item.amountCents })),
+    callSummary: "Maya Chen booked a no-cool call at 88 India Street for the next morning.",
+    reason: "Item not as described",
+  });
+  const disputes: DisputePacket[] = [
+    {
+      id: "dsp_1008",
+      shopId: "shop_northline",
+      invoiceId: disputed.id,
+      paypalDisputeId: "PP-D-DEMO-1008",
+      reason: "Item not as described",
+      status: "awaiting_approval",
+      narrative: mayaPacket.narrative,
+      evidence: mayaPacket.evidence,
+      createdAt: isoDaysAgo(now, 2, 11),
+      approvedAt: null,
+      submitNote: null,
+    },
+  ];
+  const calls: ServiceCall[] = [
+    {
+      id: "call_seed_maya",
+      shopId: "shop_northline",
+      customerId: maya.id,
+      jobId: "job_1008",
+      invoiceId: disputed.id,
+      source: "transcript",
+      status: "noted",
+      turns: [
+        { speaker: "agent", text: "Northline Mechanical, this is Tally. I can book a visit.", at: isoDaysAgo(now, 19, 14) },
+        { speaker: "customer", text: "This is Maya Chen. The AC at 88 India Street is not cooling.", at: isoDaysAgo(now, 19, 14) },
+        { speaker: "agent", text: "You are booked for the next morning.", at: isoDaysAgo(now, 19, 14) },
+      ],
+      slots: {
+        customerName: "Maya Chen",
+        phone: "555-0116",
+        email: "maya.chen@example.com",
+        address: "88 India Street",
+        symptom: "The AC at 88 India Street is not cooling.",
+        windowLabel: "the next morning",
+      },
+      startedAt: isoDaysAgo(now, 19, 14),
+      bookedAt: isoDaysAgo(now, 19, 14),
+    },
+  ];
+
   const logs: AgentLogEntry[] = [
-    log("log_01", "shop_northline", isoDaysAgo(now, 4), "agent", "draft_created", "Drafted INV-1001 from the job note and the HVAC price book.", "inv_1001", "job_1001"),
-    log("log_02", "shop_northline", isoDaysAgo(now, 4, 16), "owner", "invoice_sent", "Approved INV-1001 and sent the PayPal invoice.", "inv_1001", "job_1001"),
+    log("log_01", "shop_northline", isoDaysAgo(now, 11), "agent", "draft_created", "Drafted INV-1001 from the job note and the HVAC price book.", "inv_1001", "job_1001"),
+    log("log_02", "shop_northline", isoDaysAgo(now, 11, 16), "owner", "invoice_sent", "Approved INV-1001 and sent the PayPal invoice.", "inv_1001", "job_1001"),
     log("log_03", "shop_northline", isoDaysAgo(now, 8), "paypal", "payment_recorded", "INV-1002 was paid in full.", "inv_1002", "job_1002"),
     log("log_04", "shop_northline", isoDaysAgo(now, 0, 18), "agent", "draft_created", "Drafted INV-1003. It is over the auto-send threshold, so it is waiting for approval.", "inv_1003", "job_1003"),
     log("log_05", "shop_harborline", isoDaysAgo(now, 7), "agent", "reminder_sent", "Sent the day 3 reminder for INV-1004.", "inv_1004", "job_1004"),
     log("log_06", "shop_harborline", isoDaysAgo(now, 6), "paypal", "payment_recorded", "Recorded a partial payment of $100.00 on INV-1005.", "inv_1005", "job_1005"),
     log("log_07", "shop_switchback", isoDaysAgo(now, 9), "agent", "reminder_sent", "Sent the day 7 reminder for INV-1006 and mentioned Pay Later.", "inv_1006", "job_1006"),
     log("log_08", "shop_switchback", isoDaysAgo(now, 2), "paypal", "payment_recorded", "INV-1007 was paid in full.", "inv_1007", "job_1007"),
+    log("log_09", "shop_northline", isoDaysAgo(now, 2, 11), "paypal", "dispute_flagged", "INV-1008 is disputed. A response packet is waiting for the owner.", "inv_1008", "job_1008"),
   ];
 
-  return { shops, customers, jobs, invoices, logs, events: [] };
+  return { shops, customers, jobs, invoices, logs, events: [], calls, messages: [], disputes };
 }
 
 function job(id: string, customer: Customer, notes: string, completedAt: string): Job {
@@ -286,6 +357,82 @@ function invoice(input: {
     paidAt: input.paidAt ?? null,
     remindersSent: input.remindersSent,
   };
+}
+
+export function ensureDemoDispute(data: LedgerData, now = new Date()): boolean {
+  if (data.disputes.some((item) => item.id === "dsp_1008" || item.invoiceId === "inv_1008")) return false;
+  if (data.invoices.some((item) => item.id === "inv_1008")) return false;
+  if (data.jobs.some((item) => item.id === "job_1008")) return false;
+  if (data.calls.some((item) => item.id === "call_seed_maya")) return false;
+  const maya = data.customers.find((item) => item.shopId === "shop_northline" && item.name === "Maya Chen");
+  if (!maya || !data.shops.some((item) => item.id === "shop_northline")) return false;
+  const booked = job("job_1008", maya, "Replaced capacitor, 1 hr, rooftop unit", isoDaysAgo(now, 18));
+  data.jobs.push(booked);
+  const disputed = invoice({
+    id: "inv_1008",
+    number: data.invoices.some((item) => item.number === "INV-1008") ? `INV-${1008 + data.invoices.length}` : "INV-1008",
+    job: booked,
+    customer: maya,
+    status: "disputed",
+    lines: [
+      line("hvac.capacitor", "Run capacitor", "Run capacitor. Rooftop unit.", 1, 18500),
+      line("hvac.labor", "HVAC labor", "HVAC labor.", 1, 12500),
+    ],
+    confidence: "high",
+    customerNote: "Replaced the run capacitor and spent an hour on site.",
+    sentAt: isoDaysAgo(now, 18),
+    remindersSent: [3, 7],
+  });
+  data.invoices.push(disputed);
+  const packet = draftDisputeResponse({
+    invoiceNumber: disputed.number,
+    customerName: maya.name,
+    jobNote: booked.notes,
+    lines: disputed.lines.map((item) => ({ name: item.name, quantity: item.quantity, amountCents: item.amountCents })),
+    callSummary: "Maya Chen booked a no-cool call at 88 India Street for the next morning.",
+    reason: "Item not as described",
+  });
+  data.disputes.push({
+    id: "dsp_1008",
+    shopId: "shop_northline",
+    invoiceId: disputed.id,
+    paypalDisputeId: "PP-D-DEMO-1008",
+    reason: "Item not as described",
+    status: "awaiting_approval",
+    narrative: packet.narrative,
+    evidence: packet.evidence,
+    createdAt: isoDaysAgo(now, 2, 11),
+    approvedAt: null,
+    submitNote: null,
+  });
+  data.calls.push({
+    id: "call_seed_maya",
+    shopId: "shop_northline",
+    customerId: maya.id,
+    jobId: booked.id,
+    invoiceId: disputed.id,
+    source: "transcript",
+    status: "noted",
+    turns: [
+      { speaker: "agent", text: "Northline Mechanical, this is Tally. I can book a visit.", at: isoDaysAgo(now, 19, 14) },
+      { speaker: "customer", text: "This is Maya Chen. The AC at 88 India Street is not cooling.", at: isoDaysAgo(now, 19, 14) },
+      { speaker: "agent", text: "You are booked for the next morning.", at: isoDaysAgo(now, 19, 14) },
+    ],
+    slots: {
+      customerName: "Maya Chen",
+      phone: maya.phone,
+      email: maya.email,
+      address: "88 India Street",
+      symptom: "The AC at 88 India Street is not cooling.",
+      windowLabel: "the next morning",
+    },
+    startedAt: isoDaysAgo(now, 19, 14),
+    bookedAt: isoDaysAgo(now, 19, 14),
+  });
+  data.logs.push(
+    log("log_demo_dispute", "shop_northline", isoDaysAgo(now, 2, 11), "paypal", "dispute_flagged", `${disputed.number} is disputed. A response packet is waiting for the owner.`, disputed.id, booked.id),
+  );
+  return true;
 }
 
 function log(

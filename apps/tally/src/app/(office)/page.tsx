@@ -38,12 +38,23 @@ export default async function DeskPage() {
         <div>
           <h1 className="font-display text-4xl tracking-tight">The desk</h1>
           <p className="mt-2 max-w-xl text-sm text-muted">
-            Finished jobs become invoices. You approve anything over {formatUsd(shop.autoSendThresholdCents)}, then PayPal collects and the agent chases day 3, 7, and 14.
+            A call becomes a booked job. The tech note becomes an invoice from the price book. You approve anything over {formatUsd(shop.autoSendThresholdCents)}, then PayPal collects.
+          </p>
+          <p className="mt-3 flex flex-wrap gap-3 text-sm">
+            <Link href="/jobs" className="text-accent">Jobs</Link>
+            <Link href="/ask" className="text-accent">Ask the books</Link>
+            <Link href="/activity" className="text-accent">Activity</Link>
+            <Link href="/disputes" className="text-accent">Disputes</Link>
           </p>
         </div>
-        <Link href="/jobs/new" className="inline-flex h-10 items-center rounded-full bg-accent px-4 text-sm text-[var(--accent-foreground)]">
-          Log a finished job
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/calls" className="inline-flex h-10 items-center rounded-full bg-accent px-4 text-sm text-[var(--accent-foreground)]">
+            Answer a call
+          </Link>
+          <Link href="/cash" className="inline-flex h-10 items-center rounded-full border border-line bg-card px-4 text-sm">
+            Cash forecast
+          </Link>
+        </div>
       </div>
 
       <section className="grid gap-4 sm:grid-cols-2">

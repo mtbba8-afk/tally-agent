@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: tally-voice
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm run start --workspace @tounkara/tally
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+      - key: PAYPAL_WEBHOOK_ID
+        sync: false
+      - key: AI_GATEWAY_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: NEXT_PUBLIC_APP_URL
+        sync: false
