@@ -116,32 +116,50 @@ async function pushToPayPal(
   }
 
   const gateway = createPayPalGateway();
-  const created = await gateway.createInvoice(invoiceBody(invoice, shop, email, recipientName));
-  const sent = await gateway.sendInvoice(created.id);
-  let payUrl = sent.payUrl;
-  let paypalOrderId: string | null = null;
-  if (!payUrl) {
-    const order = await gateway.createOrder({
-      invoiceNumber: invoice.number,
-      currency: "USD",
-      amountCents: invoice.subtotalCents,
-      description: `Invoice ${invoice.number}`,
-      returnUrl: localPay,
-      cancelUrl: localPay,
-    });
-    payUrl = order.approveUrl;
-    paypalOrderId = order.id;
+  try {
+    const created = await gateway.createInvoice(invoiceBody(invoice, shop, email, recipientName));
+    const sent = await gateway.sendInvoice(created.id);
+    let payUrl = sent.payUrl;
+    let paypalOrderId: string | null = null;
+    if (!payUrl) {
+      const order = await gateway.createOrder(orderInput(invoice, localPay));
+      payUrl = order.approveUrl;
+      paypalOrderId = order.id;
+    }
+    const mode = gateway instanceof MockPayPalGateway || gateway.mode === "mock" ? "mock" : "sandbox";
+    return {
+      paypalInvoiceId: created.id,
+      paypalOrderId,
+      payUrl: mode === "mock" ? localPay : payUrl || localPay,
+      mode,
+      detail:
+        mode === "sandbox"
+          ? `Sent ${invoice.number} through the PayPal sandbox.`
+          : `Sent ${invoice.number} through the mock PayPal gateway. Add sandbox keys to create a real invoice.`,
+    };
+  } catch (error) {
+    if (!(error instanceof PayPalApiError) || (error.status !== 403 && error.status !== 401)) throw error;
+    const order = await gateway.createOrder(orderInput(invoice, localPay));
+    if (!order.id) throw error;
+    const mode = gateway instanceof MockPayPalGateway || gateway.mode === "mock" ? "mock" : "sandbox";
+    return {
+      paypalInvoiceId: order.id,
+      paypalOrderId: order.id,
+      payUrl: mode === "mock" ? localPay : order.approveUrl || localPay,
+      mode,
+      detail: `PayPal invoicing was not authorized. Sent ${invoice.number} as a PayPal order instead.`,
+    };
   }
-  const mode = gateway instanceof MockPayPalGateway || gateway.mode === "mock" ? "mock" : "sandbox";
+}
+
+function orderInput(invoice: Invoice, localPay: string) {
   return {
-    paypalInvoiceId: created.id,
-    paypalOrderId,
-    payUrl: mode === "mock" ? localPay : payUrl || localPay,
-    mode,
-    detail:
-      mode === "sandbox"
-        ? `Sent ${invoice.number} through the PayPal sandbox.`
-        : `Sent ${invoice.number} through the mock PayPal gateway. Add sandbox keys to create a real invoice.`,
+    invoiceNumber: invoice.number,
+    currency: "USD" as const,
+    amountCents: invoice.subtotalCents,
+    description: `Invoice ${invoice.number}`,
+    returnUrl: localPay,
+    cancelUrl: localPay,
   };
 }
 
