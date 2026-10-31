@@ -11,6 +11,7 @@ const nextConfig: NextConfig = {
   partialPrefetching: false,
   outputFileTracingRoot: repoRoot,
   transpilePackages: [
+    "@tounkara/front-office",
     "@tounkara/invoice-drafting",
     "@tounkara/payment-links",
     "@tounkara/payment-followups",

@@ -1,0 +1,20 @@
+[
+  {
+    "amountCents": 15625,
+    "taxReserveBps": 3000,
+    "ownerBps": 6000,
+    "opsBps": 1000,
+    "taxReserveCents": 4687,
+    "ownerCents": 9376,
+    "opsCents": 1562
+  },
+  {
+    "amountCents": 10000,
+    "taxReserveBps": 3000,
+    "ownerBps": 6000,
+    "opsBps": 1000,
+    "taxReserveCents": 3000,
+    "ownerCents": 6000,
+    "opsCents": 1000
+  }
+]

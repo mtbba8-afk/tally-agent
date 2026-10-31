@@ -12,3 +12,8 @@ apps/tally/.data
 *.log
 .vercel
 tsconfig.tsbuildinfo
+contracts/tally-office/target
+target
+near-credentials
+**/*.pem
+**/*.key

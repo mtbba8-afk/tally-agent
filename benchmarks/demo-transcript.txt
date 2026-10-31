@@ -1,0 +1,18 @@
+Tally Front Office demo (local, no real funds)
+Booked Tuesday 10:00 for Priya. A text confirmation is ready.
+Voice note: Replaced the fill valve and supply line, 45 minutes.
+Inference: local
+Fill valve x1 = $42.00
+Supply line x1 = $28.00
+Plumbing labor x0.75 = $86.25
+Invoice inv-1001 paid $156.25 USDC
+Job record hash: 46ac96e31e30bb679dc33b19283550bb9ff2d96ef2d0f5d8a21103e49a67633e
+Intents mode: mock dry=true depositAddress=null
+Settlement: mock-settlement-not-broadcast
+Treasury tax $46.87 owner $93.76 ops $3.62
+Policy: Max $200 a day, only pay Ferguson, keep 30% for taxes.
+Steward methods: create_invoice, mark_invoice_paid, request_payout, preview_payout, get_invoice, get_policy, get_treasury, get_audit
+Shade: mock 5fe7e5cb414744c2c078ff14857a0d60056fd6a8c19859443e01f70e212e898f
+Signatures: 1. Broadcast: no.
+Attack signed=false
+Payee is not an approved supplier. Amount exceeds the daily cap. Amount exceeds the agent operations balance. The tax reserve cannot be spent.

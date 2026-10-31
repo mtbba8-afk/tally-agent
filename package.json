@@ -8,8 +8,11 @@
     "skills/*"
   ],
   "scripts": {
-    "test": "vitest run",
+    "test": "vitest run && npm run test:contract",
     "test:watch": "vitest",
+    "test:contract": "cargo test --manifest-path contracts/tally-office/Cargo.toml",
+    "build:contract": "cargo build --manifest-path contracts/tally-office/Cargo.toml --target wasm32-unknown-unknown --release",
+    "office:demo": "vitest run skills/front_office/src/demo.test.ts && cat benchmarks/demo-transcript.txt",
     "dev": "npm run dev --workspace @tounkara/tally",
     "build": "npm run build --workspace @tounkara/tally",
     "lint": "npm run lint --workspace @tounkara/tally",

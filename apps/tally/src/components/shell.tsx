@@ -5,6 +5,7 @@ import type { Shop } from "@/lib/types";
 
 const links = [
   { href: "/", label: "Desk" },
+  { href: "/front-office", label: "Office" },
   { href: "/jobs", label: "Jobs" },
   { href: "/invoices", label: "Invoices" },
   { href: "/activity", label: "Activity" },

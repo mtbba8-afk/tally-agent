@@ -1,0 +1,25 @@
+{
+  "measuredAt": "2026-10-31T18:50:00.000Z",
+  "jobs": 30,
+  "correct": 30,
+  "accuracy": 1,
+  "maxInvoiceMs": 2.364,
+  "totalInvoiceMs": 11.082,
+  "callToInvoiceLimitMs": 60000,
+  "adversarialInstructions": 20,
+  "adversarialBlocked": 20,
+  "intentsSettlementMeasured": false,
+  "dryQuote": {
+    "url": "https://1click.chaindefuser.com/v0/quote",
+    "dry": true,
+    "origin": "base USDC",
+    "destination": "NEAR USDC",
+    "recipient": "demo.near",
+    "amountIn": "1000000",
+    "httpStatus": 201,
+    "elapsedSeconds": 0.52,
+    "providerTimeEstimateSeconds": 35,
+    "depositAddressPresent": false
+  },
+  "costPerJobMeasured": false
+}
